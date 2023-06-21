@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="people:get-people-request" doc:id="f17dd689-399b-4a0b-ac2a-3f1f01d1aa34" >
+		<http:request method="GET" doc:name="Request +responsePeople" doc:id="5cdcffa4-8c0a-4f78-8bd7-c2de144a9a8d" config-ref="HTTP_Request_configuration" path="/people" target="peopleResponse">
+			<error-mapping targetType="APP:ERROR_REQUEST_SW" />
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	page : vars.pageNumber
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="response" doc:id="8ccbd1a4-8383-45cd-9e20-e54c8e0b744f">
+			<ee:variables >
+				<ee:set-variable resource="dwl/people/set-people-response-plus-payload.dwl" variableName="response" />
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="pageNumber" doc:id="d406d1f7-b7ac-4146-bdd7-fe9e1dbb0eb0">
+			<ee:variables>
+				<ee:set-variable resource="dwl/people/get-page-number-request.dwl" variableName="pageNumber" />
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="next page exist?" doc:id="a5be178c-3567-4f1b-b41b-29c0b3246954" >
+			<when expression="#[vars.pageNumber != null]">
+				<flow-ref doc:name="people:get-people-request" doc:id="8b22638c-1427-49b6-9469-cb5790b00816" name="people:get-people-request"/>
+			</when>
+			<otherwise >
+				<set-payload value="#[vars.response]" doc:name="Set Payload" doc:id="bcd3bd9a-172d-4385-b31a-8fdcd0e8ae5e" />
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7a303cf4-1341-4e89-b30b-6ccec482b0c3" type="APP:ERROR_REQUEST_SW">
+				<logger level="INFO" doc:name="Error from Request API SW  " doc:id="21e0e445-4535-4424-915c-6606e03f80cb" message="Error from Request API SW  " />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="people:get-people" doc:id="a10a3aeb-fc9d-443c-ab98-de0077f29fed">
+		<ee:transform doc:name="filters" doc:id="521810ca-56d8-4332-938c-9f7de8cd86ff" >
+			<ee:variables >
+				<ee:set-variable resource="dwl/people/set-filters.dwl" variableName="filters" />
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[vars.pageNumber default 1]" doc:name="pageNumber" doc:id="8b54629d-40d6-4726-a218-1465fb3bceaf" variableName="pageNumber" />
+		<flow-ref doc:name="people:get-people-request" doc:id="8896e629-7d70-439e-bf59-777b9c3be177" name="people:get-people-request" />
+		<ee:transform doc:name="data" doc:id="35c803c5-7406-42b1-9773-2d9e327e7c73" >
+			<ee:variables >
+				<ee:set-variable resource="dwl/people/set-map-people.dwl" variableName="data" />
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="51779e53-3e28-454a-ad16-3507283795d3" >
+			<when expression="#[vars.filters != null]">
+				<foreach doc:name="For Each" doc:id="c0891671-d229-4576-a191-2be621bbbd5a" collection="#[vars.filters[0]]">
+				<ee:transform doc:name="data" doc:id="4ddf0e30-9c00-4fd0-960f-3961067e7e2a">
+				<ee:message>
+				</ee:message>
+					<ee:variables>
+								<ee:set-variable resource="dwl/people/set-filter-people.dwl" variableName="data" />
+					</ee:variables>
+			</ee:transform>
+			</foreach>
+			</when>
+		</choice>
+		<set-payload value="#[%dw 2.0&#10;output application/csv quoteValues=true&#10;--- &#10;vars.data]" doc:name="Set Payload" doc:id="c6b84625-7c04-4f23-a175-d80ff2133c63" />
+		<logger level="INFO" doc:name="Payload" doc:id="4e44153a-a709-4420-8a04-1d84d699faa6" message="Success execution" />
+	</flow>
+
+</mule>

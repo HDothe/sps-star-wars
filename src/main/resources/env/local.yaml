@@ -1,0 +1,5 @@
+starwars:
+  api:
+    host: "swapi.dev"
+    port: "443"
+    base_path: "/api"
